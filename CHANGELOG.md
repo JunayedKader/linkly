@@ -1,3 +1,23 @@
+[0.3.0] - 2026-07-04
+
+Added
+
+
+docker-compose.yml with a single web service: build, ports, environment.
+APP_ENV env var read in app/app.py and returned in the health response — gives the environment: key a real purpose.
+
+
+Docker concepts covered
+
+
+Compose file schema: services, build vs image, ports, environment.
+Compose CLI lifecycle: up --build, up -d, down, ps, logs -f.
+Project naming: default (directory name) vs explicit -p flag; container/network naming convention.
+What down removes (containers + network) vs what it keeps (images, named volumes).
+
+
+
+
 [0.2.0] - 2026-06-27
 
 Added
