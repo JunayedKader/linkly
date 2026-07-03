@@ -1,6 +1,9 @@
+import os
 from flask import Flask
 
 app = Flask(__name__)
+
+APP_ENV = os.environ.get("APP_ENV", "development")
 
 @app.route("/")
 def health():
