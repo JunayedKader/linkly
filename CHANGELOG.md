@@ -1,3 +1,23 @@
+[0.4.0] - 2026-07-04
+
+Added
+
+
+PostgreSQL 16 (Alpine) service in docker-compose.yml with a named volume postgres_data.
+psycopg2-binary added to requirements.txt.
+/db route in app/app.py that opens a connection and runs SELECT 1 to verify connectivity.
+DB credentials injected via environment: block — not hardcoded in application code.
+
+
+Docker concepts covered
+
+
+Named volumes vs bind mounts vs anonymous volumes — what survives down vs down -v.
+docker volume ls and docker volume inspect.
+Official image env vars for first-run initialization (POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD).
+depends_on: — starts db before web, but does not wait for PostgreSQL readiness (healthchecks in Phase 6).
+Service-name DNS: DB_HOST=db resolves because Compose registers each service name as a hostname on the shared network.
+
 [0.3.0] - 2026-07-04
 
 Added

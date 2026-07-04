@@ -5,3 +5,20 @@ services:
       - "5000:5000"
     environment:
       - APP_ENV=development
+      - DB_HOST=db
+      - DB_NAME=linkly
+      - DB_USER=linkly
+      - DB_PASS=linkly
+    depends_on:
+      - db
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=linkly
+      - POSTGRES_USER=linkly
+      - POSTGRES_PASSWORD=linkly
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
