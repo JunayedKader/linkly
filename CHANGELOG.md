@@ -1,3 +1,24 @@
+[0.5.0] - 2026-07-10
+
+Changed
+
+
+docker-compose.yml split into two custom networks: frontend and backend.
+web attached to both networks — receives external traffic on frontend, reaches db on backend.
+db attached to backend only — isolated from frontend network, no ports published to host.
+
+
+Docker concepts covered
+
+
+Custom bridge networks vs default Compose network.
+Network-level service isolation: db unreachable from frontend network.
+ports vs expose — ports publishes to host, expose is documentation only.
+Top-level networks: declaration block mirrors volumes: pattern.
+docker network ls and docker network inspect for verifying topology.
+
+
+
 [0.4.0] - 2026-07-04
 
 Added
