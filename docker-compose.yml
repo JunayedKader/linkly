@@ -11,6 +11,9 @@ services:
       - DB_PASS=linkly
     depends_on:
       - db
+    networks:
+      - frontend
+      - backend
   db:
     image: postgres:16-alpine
     environment:
@@ -19,6 +22,12 @@ services:
       - POSTGRES_PASSWORD=linkly
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
 
 volumes:
   postgres_data:
+
+networks:
+  frontend:
+  backend:
