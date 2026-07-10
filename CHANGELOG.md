@@ -1,3 +1,29 @@
+[0.7.0] - 2026-07-11
+
+Added
+
+
+.env.example committed as the credential contract for the project — documents required variables without exposing values.
+
+
+Changed
+
+
+docker-compose.yml replaces hardcoded environment: blocks with env_file: - .env on web and db services.
+Healthcheck in db service uses ${DB_USER} and ${DB_NAME} variable substitution instead of hardcoded values.
+
+
+Docker concepts covered
+
+
+.env file as the gitignored secrets store for local dev.
+.env.example as the committed contract documenting required variables.
+env_file: vs environment: — file-based injection vs inline declaration.
+Compose variable substitution (${VARIABLE}) vs container env injection (env_file) — different stages, different purposes.
+Compose auto-loads .env for ${} substitution in the file itself without any config needed.
+Upgrade path: hardcoded → .env file → Docker Secrets/Vault (production).
+
+
 [0.6.0] - 2026-07-10
 
 Added

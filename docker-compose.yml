@@ -3,14 +3,9 @@ services:
     build: .
     ports:
       - "5000:5000"
-    environment:
-      - APP_ENV=development
-      - DB_HOST=db
-      - DB_NAME=linkly
-      - DB_USER=linkly
-      - DB_PASS=linkly
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    env_file:
+      - .env
+
     depends_on:
       db:
         condition: service_healthy
@@ -21,16 +16,14 @@ services:
       - backend
   db:
     image: postgres:16-alpine
-    environment:
-      - POSTGRES_DB=linkly
-      - POSTGRES_USER=linkly
-      - POSTGRES_PASSWORD=linkly
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U linkly -d linkly"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
