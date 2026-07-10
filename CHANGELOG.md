@@ -1,3 +1,28 @@
+[0.6.0] - 2026-07-10
+
+Added
+
+
+Redis 7 (Alpine) service in docker-compose.yml on the backend network.
+redis==5.0.4 added to requirements.txt.
+/cache route in app/app.py demonstrating atomic INCR and Redis ephemerality.
+Healthchecks on both db (pg_isready) and redis (redis-cli ping).
+depends_on upgraded from simple list to condition: service_healthy — web
+waits for both db and redis to pass healthchecks before starting.
+
+
+Docker concepts covered
+
+
+depends_on with condition: service_healthy vs service_started.
+Healthcheck anatomy: test, interval, timeout, retries, start_period.
+CMD vs CMD-SHELL in healthcheck test arrays.
+Redis ephemerality: no volume means data resets on every down — contrast with PostgreSQL named volume.
+Redis client connection at module level vs per-request — client manages its own pool.
+
+
+
+
 [0.5.0] - 2026-07-10
 
 Changed
