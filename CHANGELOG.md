@@ -1,4 +1,31 @@
 
+[0.9.0] - 2026-07-13
+
+Added
+
+
+nginx/nginx.conf — Nginx reverse proxy config with upstream block and proxy headers.
+nginx service in docker-compose.yml on frontend network, publishing port 80.
+
+
+Changed
+
+
+web service no longer publishes port 5000 to the host — Flask is now internal only.
+External traffic enters via Nginx on port 80, forwarded to web:5000 container-to-container.
+
+
+Docker concepts covered
+
+
+Reverse proxy pattern: single public entry point, internal app not exposed to host.
+Bind mount with :ro flag — config file mounted read-only into Nginx container.
+upstream block in Nginx using Compose service-name DNS (web:5000).
+Proxy headers: X-Real-IP, X-Forwarded-For, Host — preserving client context through the proxy.
+Port publishing shift: only the entry point service (nginx) publishes to host.
+
+
+
 [0.8.0] - 2026-07-12
 
 Changed
