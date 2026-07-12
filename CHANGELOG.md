@@ -1,3 +1,30 @@
+
+[0.8.0] - 2026-07-12
+
+Changed
+
+
+Dockerfile rewritten as a two-stage build: builder stage installs
+dependencies into a venv, runtime stage copies only the venv and app code.
+
+
+Added
+
+
+PYTHONDONTWRITEBYTECODE=1 and PYTHONUNBUFFERED=1 runtime env vars.
+ARG APP_DIR=/app used across both stages for consistent path config.
+
+
+Docker concepts covered
+
+
+Multi-stage builds: FROM ... AS name, COPY --from=name.
+Virtual environment as a copyable artifact — clean transfer between stages.
+ARG (build-time only) vs ENV (build + runtime) — when to use each.
+PYTHONUNBUFFERED=1 — ensures logs appear in docker logs immediately.
+PYTHONDONTWRITEBYTECODE=1 — suppresses .pyc files in the container.
+Security benefit: pip absent from runtime image — attacker cannot install tools.
+
 [0.7.0] - 2026-07-11
 
 Added
