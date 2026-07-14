@@ -128,6 +128,7 @@ services:
     # Reads container runtime metrics directly from the Linux kernel
     # via /sys and /proc filesystems, and from the Docker socket.
     image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
     volumes:
       # These bind mounts give cAdvisor read-only access to the host
       # kernel interfaces it needs to collect metrics.
@@ -136,10 +137,11 @@ services:
       # cAdvisor uses this to read filesystem usage stats.
       - /:/rootfs:ro
 
+
       # /var/run — contains the Docker socket (docker.sock).
       # cAdvisor uses the socket to query Docker for container metadata
       # (names, labels, image names) to attach to the metrics it collects.
-      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock
 
       # /sys — the Linux sysfs virtual filesystem.
       # Exposes kernel subsystem data: cgroups, network interfaces, block
