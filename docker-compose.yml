@@ -11,6 +11,22 @@ services:
     networks:
       - frontend
     restart: unless-stopped
+    # logging block — controls how this container's stdout/stderr
+    # is handled by the Docker logging subsystem.
+    logging:
+      # json-file is Docker's default logging driver.
+      # Writes logs as JSON to files on the host under
+      # /var/lib/docker/containers/<id>/<id>-json.log
+      driver: "json-file"
+      options:
+        # max-size — once the log file reaches this size, Docker
+        # rotates it (renames it and starts a new file).
+        # Without this, log files grow unbounded and fill the disk.
+        max-size: "10m"
+        # max-file — how many rotated log files to keep.
+        # "3" means the current file plus 2 rotated backups.
+        # Oldest files are deleted when this limit is exceeded.
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -39,6 +55,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -63,6 +84,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -83,6 +109,102 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  cadvisor:
+    # cAdvisor — Container Advisor, built by Google.
+    # Reads container runtime metrics directly from the Linux kernel
+    # via /sys and /proc filesystems, and from the Docker socket.
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      # These bind mounts give cAdvisor read-only access to the host
+      # kernel interfaces it needs to collect metrics.
+
+      # /rootfs — the host's root filesystem, mounted read-only.
+      # cAdvisor uses this to read filesystem usage stats.
+      - /:/rootfs:ro
+
+      # /var/run — contains the Docker socket (docker.sock).
+      # cAdvisor uses the socket to query Docker for container metadata
+      # (names, labels, image names) to attach to the metrics it collects.
+      - /var/run:/var/run:ro
+
+      # /sys — the Linux sysfs virtual filesystem.
+      # Exposes kernel subsystem data: cgroups, network interfaces, block
+      # devices. cAdvisor reads CPU, memory, and I/O limits from here.
+      - /sys:/sys:ro
+
+      # /var/lib/docker — Docker's data directory.
+      # cAdvisor reads container layer and storage stats from here.
+      - /var/lib/docker:/var/lib/docker:ro
+    ports:
+      # 8080 published so you can browse raw metrics at localhost:8080
+      # and verify cAdvisor is collecting data before Prometheus scrapes it.
+      - "8080:8080"
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      # Bind mount our config file into the location Prometheus expects it.
+      # :ro — Prometheus reads this file, never writes to it.
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+      # Named volume for Prometheus time-series data.
+      # Without this every restart loses all collected metrics history.
+      - prometheus_data:/prometheus
+    ports:
+      # 9090 published so you can query Prometheus directly at localhost:9090
+      # and verify scrape targets are healthy before setting up Grafana.
+      - "9090:9090"
+    networks:
+      - monitoring
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    ports:
+      # 3000 is Grafana's default web UI port.
+      - "3000:3000"
+    volumes:
+      # Named volume for Grafana's database (SQLite by default).
+      # Stores dashboards, users, datasource configs, and settings.
+      # Without this every restart resets Grafana to factory defaults.
+      - grafana_data:/var/lib/grafana
+    environment:
+      # Default admin credentials — change these in .env for any
+      # environment that's network-accessible.
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      # Disables Grafana's telemetry reporting to Grafana Labs.
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - prometheus
     deploy:
       resources:
         limits:
@@ -94,7 +216,13 @@ services:
 
 volumes:
   postgres_data:
+  # Two new named volumes for monitoring data persistence.
+  prometheus_data:
+  grafana_data:
 
 networks:
   frontend:
   backend:
+  # Separate network for monitoring stack — prometheus, grafana, cadvisor
+  # talk to each other here without touching the app network.
+  monitoring:

@@ -1,3 +1,34 @@
+[0.11.0] - 2026-07-15
+
+Added
+
+
+prometheus/prometheus.yml — scrape config for Prometheus self-monitoring and cAdvisor.
+cadvisor service in docker-compose.yml — collects container CPU, memory, network metrics from host kernel interfaces.
+prometheus service in docker-compose.yml — scrapes cAdvisor every 15s, persists data to prometheus_data named volume.
+grafana service in docker-compose.yml — visualises Prometheus data, persists dashboards to grafana_data named volume.
+monitoring network — isolates the observability stack from app networks.
+Two new named volumes: prometheus_data, grafana_data.
+
+
+Changed
+
+
+docker-compose.yml — added logging block with json-file driver and log rotation (max-size: 10m, max-file: 3) on all four existing services.
+
+
+Docker concepts covered
+
+
+json-file logging driver with max-size and max-file rotation options — prevents unbounded disk growth.
+Logging driver alternatives: syslog, journald, fluentd, awslogs — json-file correct for single-host.
+cAdvisor bind mounts to host kernel interfaces (/sys, /proc, /var/run, /rootfs) — how container metrics are collected.
+Docker socket (/var/run/docker.sock) mount — how cAdvisor gets container metadata from Docker daemon.
+Prometheus scrape model: pull-based, scrape_interval, job_name, static_configs.
+Grafana datasource wiring using Compose service-name DNS (http://prometheus:9090).
+monitoring network isolation — observability stack separated from app traffic.
+
+
 [0.10.0] - 2026-07-15
 
 Changed
