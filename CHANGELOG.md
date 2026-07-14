@@ -1,3 +1,25 @@
+[0.10.0] - 2026-07-15
+
+Changed
+
+
+docker-compose.yml — added restart: unless-stopped on all four services.
+docker-compose.yml — added deploy.resources with limits and reservations on all four services.
+docker-compose.yml — added healthcheck on web service using urllib.request.
+docker-compose.yml — upgraded nginx depends_on to condition: service_healthy now that web has a healthcheck.
+nginx/nginx.conf — added inline comments explaining every directive for documentation.
+
+
+Docker concepts covered
+
+
+Restart policies: no, on-failure, always, unless-stopped — when to use each.
+deploy.resources.limits — hard kernel-enforced ceiling via cgroups (CPU and memory).
+deploy.resources.reservations — soft minimum, informational in plain Compose.
+Healthcheck on web using Python stdlib urllib.request — no extra packages needed.
+Full startup chain enforcement: db healthy → redis healthy → web healthy → nginx starts.
+Scaling with --scale web=3 — multiple replicas behind Nginx round-robin load balancing.
+Nginx upstream block resolving multiple replicas via Compose service-name DNS.
 
 [0.9.0] - 2026-07-13
 
