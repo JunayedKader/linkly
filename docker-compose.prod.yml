@@ -8,6 +8,12 @@ services:
     # The image is the deployable artifact. Source code never touches the server.
     # No volumes entry here means the base file's volumes (if any) apply,
     # but we never add source code mounts.
+    # image: field tells Compose to pull this from the registry
+    # instead of running docker build.
+    # In prod you never build on the server — you pull the artifact
+    # that was built and tested in CI.
+    image: junayedkader/linkly-web:v0.13.0
+
     environment:
       - FLASK_ENV=production
       - APP_ENV=production
