@@ -1,7 +1,30 @@
 # Changelog
  
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Every entry lists not just what changed, but which Docker concept it exists to exercise — that mapping is the point of this project.
- 
+
+## [0.14.0] - 2026-07-15
+
+### Changed
+- `Dockerfile` — added non-root `appuser`/`appgroup` system accounts;
+  `USER appuser` instruction switches process to non-root before CMD.
+  `chown -R appuser:appgroup /app /venv` grants read access to app files.
+- `docker-compose.yml` — added `security_opt: no-new-privileges:true`,
+  `cap_drop: ALL`, and selective `cap_add` on all four app services.
+- `docker-compose.yml` — added `read_only: true` and `tmpfs` mounts
+  (`/tmp`, `/app/__pycache__`) on `web` service.
+
+### Docker concepts covered
+- Non-root containers: `groupadd -r`, `useradd -r`, `USER` instruction.
+- `-s /sbin/nologin` — service account cannot be logged into interactively.
+- `chown` in Dockerfile — transferring file ownership before switching user.
+- Linux capabilities: what they are, Docker's default set, `cap_drop: ALL`
+  + selective `cap_add` pattern.
+- `no-new-privileges` — blocks setuid privilege escalation inside container.
+- `read_only: true` — immutable container root filesystem at runtime.
+- `tmpfs` — in-memory writable mounts for paths that need write access
+  despite `read_only: true`.
+- Per-service capability requirements: Flask needs none, Nginx needs
+  `NET_BIND_SERVICE`, PostgreSQL needs `CHOWN/FOWNER/SETUID/SETGID`.
 
 ## [0.13.0] - 2026-07-15
 

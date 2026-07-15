@@ -27,6 +27,26 @@ services:
         # "3" means the current file plus 2 rotated backups.
         # Oldest files are deleted when this limit is exceeded.
         max-file: "3"
+    # security_opt — Linux security options applied to the container.
+    security_opt:
+      # no-new-privileges — prevents the container process from gaining
+      # additional privileges via setuid binaries or sudo.
+      # Example: even if an attacker finds a setuid binary inside the
+      # container, execing it cannot escalate to root.
+      - no-new-privileges:true
+    # cap_drop — drop Linux kernel capabilities from the container.
+    # Containers inherit a default set of capabilities from Docker.
+    # Dropping ALL and adding back only what's needed is the safest approach.
+    cap_drop:
+      - ALL
+    # cap_add — add back only the specific capabilities Nginx needs.
+    # NET_BIND_SERVICE: allows binding to ports below 1024 (port 80).
+    # Without this, Nginx cannot bind to port 80 after dropping ALL.
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID       
+      - SETGID
+      - CHOWN
     deploy:
       resources:
         limits:
@@ -60,6 +80,30 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      # Drop ALL capabilities from the Flask container.
+      # Flask does not need any special kernel capabilities to run —
+      # it's a pure userspace Python process binding to port 5000 (>1024).
+      - ALL
+    # read_only — mounts the container's root filesystem as read-only.
+    # The container process cannot write anywhere on the filesystem
+    # except explicitly declared tmpfs mounts below.
+    # If an attacker gets code execution, they cannot write malware,
+    # modify config files, or create persistence mechanisms.
+    read_only: true
+    # tmpfs — in-memory temporary filesystems mounted at these paths.
+    # Required because read_only: true blocks all writes, but Python
+    # and some libraries need to write temporary files at runtime.
+    tmpfs:
+      # /tmp — standard temporary file location. Python uses this
+      # for various runtime operations.
+      - /tmp
+      # /app/__pycache__ — Python writes compiled .pyc bytecode cache
+      # files here. PYTHONDONTWRITEBYTECODE=1 suppresses most of this,
+      # but some edge cases still attempt writes. tmpfs prevents errors.
+      - /app/__pycache__
     deploy:
       resources:
         limits:
@@ -89,6 +133,22 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      # PostgreSQL needs CHOWN to set file ownership on its data directory
+      # during initialization, FOWNER for file permission operations,
+      # and SETUID/SETGID to drop privileges after startup.
+      # DAC_OVERRIDE — allows the process to bypass file permission checks (DAC = Discretionary Access Control). 
+      # PostgreSQL needs this to access /var/lib/postgresql/data which is owned by a different UID 
+      # than what the process runs as after dropping privileges.
+      - CHOWN
+      - FOWNER
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
     deploy:
       resources:
         limits:
@@ -114,6 +174,14 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      # Redis needs SETUID/SETGID to drop to its own user after startup.
+      - SETUID
+      - SETGID
     deploy:
       resources:
         limits:

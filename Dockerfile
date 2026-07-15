@@ -35,6 +35,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Only what we explicitly copy from the builder stage arrives here.
 FROM python:3.12-slim AS runtime
 
+# Create a system group named "appgroup" with no login shell and no
+# home directory. GID is assigned automatically.
+# System accounts (-r) are intended for services, not human users —
+# they get a lower UID/GID and are excluded from some system tooling.
+RUN groupadd -r appgroup && \
+    # Create a system user named "appuser" in "appgroup".
+    # -r: system account
+    # -g appgroup: assign to our group
+    # -s /sbin/nologin: no interactive shell — this account cannot be
+    #   logged into directly, only used to run the process
+    # -d /app: home directory set to /app
+    # -M: do NOT create the home directory (we create it with WORKDIR)
+    useradd -r -g appgroup -s /sbin/nologin -d /app -M appuser
+
 ARG APP_DIR=/app
 
 WORKDIR ${APP_DIR}
@@ -46,6 +60,12 @@ COPY --from=builder /venv /venv
 # Copy application source code from the local build context (your machine),
 # not from the builder stage — app code was never in builder.
 COPY app/ .
+
+# Change ownership of /app and /venv to appuser so the process can
+# read its own files. Without this, appuser cannot read /app/app.py
+# or execute anything in /venv/bin.
+RUN chown -R appuser:appgroup /app /venv
+
 
 # Make the venv's Python and installed packages the active ones at runtime.
 # This mirrors what we did in the builder stage.
@@ -60,5 +80,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 5000
+
+# Switch from root to appuser for all subsequent instructions and
+# for the final running container process.
+# Everything after USER runs as appuser — not root.
+USER appuser
 
 CMD ["python", "app.py"]
