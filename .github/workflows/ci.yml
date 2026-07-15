@@ -29,7 +29,7 @@ jobs:
       # Step 1 — checkout the repository code onto the runner.
       # Without this step the runner has no files to work with.
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6
 
       # Step 2 — set up Docker Buildx.
       # Buildx is Docker's extended build client — supports multi-platform
@@ -73,7 +73,7 @@ jobs:
       # cache-from/cache-to: uses GitHub Actions cache to speed up
       # subsequent builds by reusing unchanged layers.
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
