@@ -1,0 +1,34 @@
+# docker-compose.prod.yml — production overrides
+# Never auto-loaded. Must be passed explicitly:
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  web:
+    # In prod, no bind mounts — code is baked into the image at build time.
+    # The image is the deployable artifact. Source code never touches the server.
+    # No volumes entry here means the base file's volumes (if any) apply,
+    # but we never add source code mounts.
+    environment:
+      - FLASK_ENV=production
+      - APP_ENV=production
+
+    # Run with Gunicorn instead of Flask's dev server in production.
+    # Gunicorn is a proper WSGI server — multi-worker, no debug mode,
+    # no auto-reloader, handles concurrent requests correctly.
+    # 4 workers = (2 x CPU cores) + 1, the standard Gunicorn formula.
+    # binding 0.0.0.0:5000 matches what Nginx proxies to.
+    command: gunicorn --workers 4 --bind 0.0.0.0:5000 app:app
+
+    # Tighter restart policy in prod — restart on any failure.
+    restart: always
+
+  nginx:
+    restart: always
+
+  db:
+    restart: always
+    # No ports published in prod — DB never exposed to host or internet.
+
+  redis:
+    restart: always
+    # No ports published in prod — Redis never exposed to host or internet.

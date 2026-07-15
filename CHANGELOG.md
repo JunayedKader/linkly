@@ -1,3 +1,28 @@
+[0.12.0] - 2026-07-15
+
+Added
+
+
+docker-compose.override.yml — dev overrides: bind-mount source code,
+Flask debug+reload mode, db and redis ports published to host.
+docker-compose.prod.yml — prod overrides: Gunicorn WSGI server,
+no source code mounts, no db/redis ports published, restart: always.
+docs/phase-12-dev-vs-prod.md — documents file layering workflow and merge rules.
+gunicorn==22.0.0 added to requirements.txt.
+
+
+Docker concepts covered
+
+
+Compose file layering: base + override merged at runtime.
+docker-compose.override.yml auto-loaded in dev, explicit -f required for prod.
+Merge rules: scalars replace, maps merge, lists append.
+docker compose config — inspect the final merged effective configuration.
+Bind mount for live code reload in dev vs immutable built image in prod.
+Flask dev server vs Gunicorn WSGI in prod — why the built-in server is not production-safe.
+Port exposure strategy: db and redis exposed in dev only, internal-only in prod.
+
+
 [0.11.0] - 2026-07-15
 
 Added

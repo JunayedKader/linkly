@@ -15,12 +15,12 @@ WORKDIR ${APP_DIR}
 # Create a virtual environment inside the builder stage.
 # This isolates installed packages into a single directory (/app/venv)
 # that we can copy cleanly into the runtime stage in one COPY instruction.
-RUN python -m venv /app/venv
+RUN python -m venv /venv
 
 # Activate the venv for subsequent RUN commands by prepending it to PATH.
 # Without this, pip and python commands would use the system Python,
 # not the venv.
-ENV PATH="/app/venv/bin:$PATH"
+ENV PATH="/venv/bin:$PATH"
 
 COPY requirements.txt .
 
@@ -41,7 +41,7 @@ WORKDIR ${APP_DIR}
 
 # Copy only the installed venv from the builder stage — not pip, not build tools.
 # COPY --from=builder references the named stage above by its AS name.
-COPY --from=builder /app/venv /app/venv
+COPY --from=builder /venv /venv
 
 # Copy application source code from the local build context (your machine),
 # not from the builder stage — app code was never in builder.
@@ -49,7 +49,7 @@ COPY app/ .
 
 # Make the venv's Python and installed packages the active ones at runtime.
 # This mirrors what we did in the builder stage.
-ENV PATH="/app/venv/bin:$PATH"
+ENV PATH="/venv/bin:$PATH"
 
 # Runtime env var — sets PYTHONDONTWRITEBYTECODE so Python doesn't write
 # .pyc files inside the container (no benefit, just noise in the filesystem).
