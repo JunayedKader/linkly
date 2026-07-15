@@ -1,0 +1,113 @@
+# ci.yml — GitHub Actions CI/CD pipeline
+# Triggers on every push to main and on pull requests targeting main.
+# Builds the Docker image, runs a basic smoke test, then pushes to
+# Docker Hub only when merging to main (not on PRs from forks).
+
+name: CI
+
+# on: defines what events trigger this workflow.
+on:
+  push:
+    # Only trigger on pushes to main — not feature branches.
+    # Feature branch builds happen via PR events below.
+    branches:
+      - main
+  pull_request:
+    # Trigger on PRs targeting main — builds and tests the image
+    # before the PR is merged, catching issues early.
+    branches:
+      - main
+
+# jobs: the actual work. Multiple jobs run in parallel by default.
+jobs:
+  build-and-push:
+    # runs-on: which GitHub-hosted runner to use.
+    # ubuntu-latest is the standard choice — has Docker pre-installed.
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1 — checkout the repository code onto the runner.
+      # Without this step the runner has no files to work with.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2 — set up Docker Buildx.
+      # Buildx is Docker's extended build client — supports multi-platform
+      # builds, better caching, and BuildKit features.
+      # Required by the docker/build-push-action used below.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Step 3 — login to Docker Hub.
+      # DOCKER_USERNAME and DOCKER_PASSWORD are GitHub Secrets —
+      # set them at: repo → Settings → Secrets and variables → Actions.
+      # Secrets are never visible in logs, even if you try to echo them.
+      # This step only runs on push to main, not on PRs — prevents
+      # forks from trying to push with missing credentials.
+      - name: Login to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Step 4 — extract metadata for image tags.
+      # docker/metadata-action generates tags and labels automatically
+      # from the Git context: branch name, commit SHA, semver tags.
+      # 'type=sha' generates a tag like 'sha-a1b2c3d' from the commit hash.
+      # 'type=ref,event=branch' generates a tag from the branch name.
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/linkly-web
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # Step 5 — build the image and push to Docker Hub.
+      # push: true only when on main branch (github.event_name == 'push').
+      # On PRs, push: false — image is built and tested but not pushed.
+      # cache-from/cache-to: uses GitHub Actions cache to speed up
+      # subsequent builds by reusing unchanged layers.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Step 6 — smoke test.
+      # Runs only on PRs — verifies the built image actually starts
+      # and responds before allowing the PR to be merged.
+      - name: Smoke test
+        if: github.event_name == 'pull_request'
+        run: |
+          # Start just the web container with minimal env vars
+          docker run -d \
+            --name smoke-test \
+            -p 5000:5000 \
+            -e APP_ENV=test \
+            -e DB_HOST=localhost \
+            -e DB_NAME=test \
+            -e DB_USER=test \
+            -e DB_PASS=test \
+            -e REDIS_HOST=localhost \
+            -e REDIS_PORT=6379 \
+            ${{ secrets.DOCKER_USERNAME }}/linkly-web:latest
+
+          # Wait for Flask to start
+          sleep 5
+
+          # Hit the health endpoint — if Flask isn't running this fails
+          # and the entire CI job fails, blocking the PR merge.
+          curl --fail http://localhost:5000/
+
+          # Clean up
+          docker stop smoke-test
+          docker rm smoke-test
