@@ -1,0 +1,38 @@
+# docker-compose.override.yml — dev overrides
+# Compose loads this automatically alongside docker-compose.yml in dev.
+# Never use this file in production — it exists only for local development.
+
+services:
+  web:
+    # In dev, bind-mount the local app/ directory into the container.
+    # Any change you make to a .py file on your host is instantly visible
+    # inside the container — no rebuild needed.
+    # This ADDS to the volumes list in docker-compose.yml, not replaces it.
+    volumes:
+      - ./app:/app
+
+    # Override the CMD from the Dockerfile to run Flask's built-in
+    # dev server with debug mode and auto-reloader enabled.
+    # --reload watches for file changes and restarts Flask automatically.
+    # debug=True enables the interactive debugger in the browser on errors.
+    # This replaces the CMD from docker-compose.yml entirely.
+    command: python -m flask --app app run --host 0.0.0.0 --port 5000 --debug --reload
+
+    environment:
+      # Add FLASK_ENV on top of whatever .env already injects.
+      # This ADDS to the environment, not replaces it.
+      - FLASK_ENV=development
+      - APP_ENV=development
+
+  db:
+    # In dev, publish the DB port so you can connect directly from
+    # your host machine using psql, DBeaver, TablePlus etc.
+    # In prod this port is never published — DB is internal only.
+    ports:
+      - "5432:5432"
+
+  redis:
+    # Same as db — publish Redis port so you can inspect it with
+    # redis-cli directly from your host during development.
+    ports:
+      - "6379:6379"
