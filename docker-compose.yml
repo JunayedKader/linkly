@@ -119,6 +119,10 @@ services:
       - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Mount the init script into the directory PostgreSQL watches.
+      # :ro — PostgreSQL reads this file, never writes to it.
+      # This file runs ONCE on first startup when data directory is empty.
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - backend
     restart: unless-stopped
