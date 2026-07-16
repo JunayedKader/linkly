@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linkly — URL Shortener</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      /* Dark background — easier on the eyes for a dev tool */
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────── */
+    .container {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────── */
+    header { text-align: center; }
+
+    header h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      /* Gradient text — visual interest without images */
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    /* ── Card ─────────────────────────────────────────────────────── */
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+
+    /* ── Form ─────────────────────────────────────────────────────── */
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="url"] {
+      flex: 1;
+      padding: 12px 16px;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="url"]:focus { border-color: #6366f1; }
+
+    input[type="url"]::placeholder { color: #475569; }
+
+    button {
+      padding: 12px 24px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #4f46e5; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Result box ───────────────────────────────────────────────── */
+    .result {
+      /* Hidden by default — shown via JS after successful shorten */
+      display: none;
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+    }
+
+    .result.success { border-color: #10b981; }
+    .result.error   { border-color: #ef4444; }
+
+    .result-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .result-url {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .result-url a {
+      color: #6366f1;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .result-url a:hover { text-decoration: underline; }
+
+    .copy-btn {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      background: #2d3148;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .copy-btn:hover { background: #3d4168; }
+
+    .error-msg { color: #ef4444; font-size: 0.9rem; }
+
+    /* ── Links table ──────────────────────────────────────────────── */
+    .table-wrapper { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #2d3148;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #1a1f35;
+      vertical-align: middle;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: #252840; }
+
+    td a {
+      color: #6366f1;
+      text-decoration: none;
+    }
+
+    td a:hover { text-decoration: underline; }
+
+    /* Truncate long URLs — show full on hover via title attribute */
+    .url-cell {
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #2d3148;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .empty {
+      text-align: center;
+      color: #475569;
+      padding: 32px 0;
+      font-size: 0.9rem;
+    }
+
+    /* ── Spinner ──────────────────────────────────────────────────── */
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff44;
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── Header ───────────────────────────────────────────────── -->
+    <header>
+      <h1>⚡ Linkly</h1>
+      <p>Paste a long URL. Get a short one. Instantly.</p>
+    </header>
+
+    <!-- ── Shorten form ─────────────────────────────────────────── -->
+    <div class="card">
+      <h2>Shorten a URL</h2>
+      <div class="input-row">
+        <input
+          type="url"
+          id="urlInput"
+          placeholder="https://example.com/very/long/url/that/nobody/wants/to/type"
+        />
+        <!-- onclick calls the shorten() JS function below -->
+        <button id="shortenBtn" onclick="shorten()">Shorten</button>
+      </div>
+
+      <!-- Result shown after successful API call -->
+      <div class="result" id="result">
+        <div class="result-label" id="resultLabel"></div>
+        <div class="result-url" id="resultContent"></div>
+      </div>
+    </div>
+
+    <!-- ── Links list ────────────────────────────────────────────── -->
+    <div class="card">
+      <h2>All links</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Short URL</th>
+              <th>Original URL</th>
+              <th>Clicks</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <!-- tbody populated by loadLinks() on page load -->
+          <tbody id="linksTable">
+            <tr><td colspan="4" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── shorten() ────────────────────────────────────────────────────
+    // Called when the user clicks "Shorten".
+    // POSTs to /shorten, displays the result, refreshes the table.
+    async function shorten() {
+      const input = document.getElementById("urlInput");
+      const btn   = document.getElementById("shortenBtn");
+      const result = document.getElementById("result");
+      const label  = document.getElementById("resultLabel");
+      const content = document.getElementById("resultContent");
+
+      const url = input.value.trim();
+
+      // Basic client-side check before hitting the API.
+      if (!url) {
+        showError("Please enter a URL.");
+        return;
+      }
+
+      // Disable button during request to prevent double-submit.
+      btn.disabled = true;
+      btn.textContent = "Shortening…";
+      result.style.display = "none";
+
+      try {
+        // fetch() — browser's built-in HTTP client.
+        // We POST JSON to /shorten and await the response.
+        const response = await fetch("/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // JSON.stringify() converts the JS object to a JSON string.
+          body: JSON.stringify({ url })
+        });
+
+        // response.json() parses the response body as JSON.
+        const data = await response.json();
+
+        if (response.ok) {
+          // Success — show the short URL with a copy button.
+          label.textContent = "Your short URL";
+          content.innerHTML = `
+            <a href="${data.short_url}" target="_blank">${data.short_url}</a>
+            <button class="copy-btn" onclick="copyToClipboard('${data.short_url}', this)">
+              Copy
+            </button>
+          `;
+          result.className = "result success";
+          result.style.display = "block";
+          input.value = "";
+
+          // Refresh the links table so the new entry appears immediately.
+          loadLinks();
+        } else {
+          // API returned an error (4xx/5xx) — show the error message.
+          showError(data.error || "Something went wrong.");
+        }
+      } catch (err) {
+        // Network error — fetch() itself threw.
+        showError("Network error — is the server running?");
+      } finally {
+        // Always re-enable the button regardless of outcome.
+        btn.disabled = false;
+        btn.textContent = "Shorten";
+      }
+    }
+
+    // ── showError() ──────────────────────────────────────────────────
+    function showError(message) {
+      const result  = document.getElementById("result");
+      const label   = document.getElementById("resultLabel");
+      const content = document.getElementById("resultContent");
+
+      label.textContent = "Error";
+      content.innerHTML = `<span class="error-msg">${message}</span>`;
+      result.className = "result error";
+      result.style.display = "block";
+    }
+
+    // ── copyToClipboard() ────────────────────────────────────────────
+    // Copies the short URL to clipboard and gives visual feedback.
+    async function copyToClipboard(text, btn) {
+      try {
+        // navigator.clipboard.writeText() — modern clipboard API.
+        await navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = "Copied!";
+        // Reset button label after 1.5 seconds.
+        setTimeout(() => btn.textContent = original, 1500);
+      } catch {
+        btn.textContent = "Failed";
+      }
+    }
+
+    // ── loadLinks() ──────────────────────────────────────────────────
+    // Fetches all links from GET /links and renders them in the table.
+    async function loadLinks() {
+      const tbody = document.getElementById("linksTable");
+
+      try {
+        const response = await fetch("/links");
+        const data = await response.json();
+
+        if (!data.links || data.links.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="empty">No links yet — shorten something above.</td></tr>`;
+          return;
+        }
+
+        // Map each link object to a table row HTML string.
+        tbody.innerHTML = data.links.map(link => `
+          <tr>
+            <td>
+              <a href="${link.short_url}" target="_blank">
+                /${link.short_code}
+              </a>
+            </td>
+            <td class="url-cell" title="${link.original_url}">
+              <a href="${link.original_url}" target="_blank">
+                ${link.original_url}
+              </a>
+            </td>
+            <td><span class="badge">${link.click_count}</span></td>
+            <td>${formatDate(link.created_at)}</td>
+          </tr>
+        `).join("");
+
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty">Failed to load links.</td></tr>`;
+      }
+    }
+
+    // ── formatDate() ─────────────────────────────────────────────────
+    // Converts ISO timestamp to readable local time.
+    // e.g. "2026-07-16T08:16:52+00:00" → "Jul 16, 2026, 8:16 AM"
+    function formatDate(isoString) {
+      return new Date(isoString).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    // ── Enter key support ─────────────────────────────────────────────
+    // Pressing Enter in the input field triggers shorten().
+    document.getElementById("urlInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") shorten();
+    });
+
+    // ── Initial load ──────────────────────────────────────────────────
+    // Populate the table when the page first loads.
+    loadLinks();
+  </script>
+</body>
+</html>
