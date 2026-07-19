@@ -12,11 +12,24 @@ on:
     # Feature branch builds happen via PR events below.
     branches:
       - main
+    paths-ignore:
+      # Never trigger a build+push for docs-only changes.
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
   pull_request:
     # Trigger on PRs targeting main — builds and tests the image
     # before the PR is merged, catching issues early.
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
 
 # jobs: the actual work. Multiple jobs run in parallel by default.
 jobs:
