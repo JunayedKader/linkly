@@ -16,9 +16,9 @@ Nginx (port 80)          ← reverse proxy, single public entry point
    │
    ▼
 Flask / Gunicorn          ← application layer, non-root, read-only filesystem
-   ├── PostgreSQL         ← persistent storage, named volume
-   └── Redis              ← ephemeral cache, atomic operations
-
+   ├── templates/index.html   ← server-rendered frontend (GET /ui)
+   ├── PostgreSQL         ← persistent storage, named volume, schema bootstrapped from db/init.sql
+   └── Redis              ← ephemeral cache, atomic operations, 1hr TTL on link lookups
 Monitoring stack (isolated network)
    ├── Prometheus         ← metrics scraping and storage
    ├── Grafana            ← dashboard visualisation
@@ -36,10 +36,21 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
+On first startup with an empty data volume, PostgreSQL automatically runs `db/init.sql` (mounted read-only into `docker-entrypoint-initdb.d`) to create the schema. This only happens once — if you need to re-run it, you must `docker compose down -v` to wipe the volume first.
+
 ```bash
-curl localhost        # {"status":"ok","env":"development"}
-curl localhost/db     # {"db":"connected"}
-curl localhost/cache  # {"cache":"connected","hit_count":1}
+curl localhost              # {"status":"ok","env":"development"}
+curl localhost/db           # {"db":"connected"}
+curl localhost/cache        # {"cache":"connected","hit_count":1}
+curl localhost/ui           # serves the frontend
+
+curl -X POST localhost/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}'
+# {"short_url":"http://localhost/aB3xY9","short_code":"aB3xY9","original_url":"https://example.com","created_at":"..."}
+
+curl -L localhost/aB3xY9    # redirects to https://example.com
+curl localhost/links        # lists all shortened URLs with click counts
 ```
 
 ### Production mode
@@ -54,11 +65,17 @@ Runs Gunicorn instead of Flask dev server. No source code bind mounts. No db/red
 
 ## API endpoints
 
-| Endpoint | Description |
-|---|---|
-| `GET /` | Health check — returns app status and environment |
-| `GET /db` | PostgreSQL connectivity check via `SELECT 1` |
-| `GET /cache` | Redis connectivity check with atomic hit counter |
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | GET | Health check — returns app status and environment |
+| `/ui` | GET | Serves the frontend (`templates/index.html`) |
+| `/db` | GET | PostgreSQL connectivity check via `SELECT 1` |
+| `/cache` | GET | Redis connectivity check with atomic hit counter |
+| `/shorten` | POST | Creates a short link. Body: `{"url": "https://..."}`. Returns 400 if body/field missing, 422 if URL fails validation, 201 on success |
+| `/<short_code>` | GET | Redirects to the original URL (302). Checks Redis first, falls back to PostgreSQL on cache miss, repopulates cache. Returns 404 if code doesn't exist |
+| `/links` | GET | Lists all shortened URLs with click counts, newest first |
+
+Short codes are 6 characters from `[a-zA-Z0-9]` (62^6 ≈ 56 billion combinations), generated with up to 5 collision-retry attempts before failing with a 500.
 
 ---
 
@@ -70,9 +87,14 @@ linkly/
 │   └── workflows/
 │       └── ci.yml                  # GitHub Actions CI/CD pipeline
 ├── app/
-│   └── app.py                      # Flask application
+│   ├── app.py                      # Flask application
+│   └── templates/
+│       └── index.html              # Frontend UI
+├── db/
+│   └── init.sql                    # Schema bootstrap — runs once via docker-entrypoint-initdb.d
 ├── docs/
-│   └── phase-2-manual-container-lifecycle.md
+│   ├── phase-2-manual-container-lifecycle.md
+│   └── phase-12-dev-vs-prod.md
 ├── nginx/
 │   └── nginx.conf                  # Reverse proxy config
 ├── prometheus/
@@ -135,11 +157,16 @@ docker pull junayedkader/linkly-web:latest
 
 ## Security hardening (Phase 14)
 
-- Container runs as `appuser` (non-root system account, UID ~999)
-- `cap_drop: ALL` on all services — capabilities added back only as needed
+Applied consistently across `web` and `db` services:
+
+- Containers run as non-root system accounts (`appuser` for web, `postgres` for db)
+- `cap_drop: ALL` on all services — capabilities added back only as needed:
+  - `web`: minimal set required for Gunicorn under a read-only filesystem
+  - `db`: `CHOWN`, `FOWNER`, `SETUID`, `SETGID`, `DAC_OVERRIDE` — required by PostgreSQL to take ownership of and access `/var/lib/postgresql/data` before dropping privileges
 - `read_only: true` on web container — filesystem immutable at runtime
 - `tmpfs` mounts for `/tmp` and `__pycache__` — writable in-memory only
-- `no-new-privileges: true` — blocks setuid privilege escalation
+- `no-new-privileges: true` on all services — blocks setuid privilege escalation
+- Resource limits (`deploy.resources`) on all services — prevents any single container from starving the host
 - No credentials in images or committed files — `.env` gitignored, `.env.example` documents required variables
 
 ---
@@ -163,4 +190,4 @@ http://<host>:3000
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE)
